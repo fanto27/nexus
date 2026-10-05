@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: nexus-sec-framework
+Version: 0.1.0
+Summary: Framework local de sécurité, d'apprentissage et d'audit autorisé
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: rich>=13.7
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: ruff>=0.5; extra == "dev"
+Requires-Dist: mypy>=1.10; extra == "dev"
+
+# NEXUS
+NEXUS est un framework Python local pour l'apprentissage, les CTF, les labs personnels et les audits explicitement autorisés.

@@ -1,0 +1,10 @@
+.venv/
+env/
+__pycache__/
+*.pyc
+*.sqlite3
+*.html
+*.dot
+*.svg
+*.json
+.DS_Store
