@@ -40,6 +40,9 @@ from nexus.plugins.api import BUILTIN_CATALOG
 from nexus.reports.render import render_report
 from nexus.scanners.tcp import scan_tcp
 
+# --- NOUVEAU : Importation de l'ActionGate ---
+from nexus.core.gate import gate, ActionRequest
+
 console = Console()
 
 def _add_child_mode_flags(parser: argparse.ArgumentParser) -> None:
@@ -149,7 +152,21 @@ def _run_scan(args: argparse.Namespace, store: Store) -> None:
     if not raw_targets: raise ScopeError("Indiquer une cible.")
     addresses = expand_targets(raw_targets, offline=args.offline, max_hosts=256)
     ports = parse_ports(args.ports)
+    
     _confirm_scan(addresses, ports, mode=args.mode)
+    
+    # --- NOUVEAU : Le garde du corps contrôle l'action ---
+    for address in addresses:
+        req = ActionRequest(
+            module="cli.scan",
+            capability="network.connect",
+            target=address,
+            mode=args.mode
+        )
+        if not gate.check(req):
+            raise PermissionError(f"ActionGate a formellement interdit le scan vers {address}.")
+    # -----------------------------------------------------
+
     started = datetime.now(timezone.utc).isoformat()
     timer = monotonic()
     with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), BarColumn(), TaskProgressColumn(), console=console) as progress:
@@ -169,12 +186,10 @@ def _run_map(args: argparse.Namespace, store: Store) -> None:
 
 def _run_report(args: argparse.Namespace, store: Store) -> None:
     result = _load_scan(store, args.scan_id)
-    
-    # CORRECTION : On attrape l'erreur SQL si la table n'est pas bien formatée
     try:
         actions = store.list_actions(result.scan_id)
     except Exception:
-        actions = [] # On ignore l'erreur et on met une liste vide
+        actions = []
         
     content = render_report(result, fmt=args.format, actions=actions)
     if args.output:
@@ -190,16 +205,17 @@ def _run_local_audit(fmt: str) -> None:
     table = Table(title="Audit local")
     table.add_column("Champ", style="cyan")
     table.add_column("Valeur")
-    for key in ("platform", "architecture", "cpu_count", "memory_total_mb", "running_as_root"):
-        table.add_row(key, str(snapshot[key]))
+    
+    for key, value in snapshot.items():
+        table.add_row(str(key), str(value))
+        
     console.print(table)
 
 def _interactive_menu(store: Store) -> None:
     """Menu façon Red Tiger en ASCII Art et interface interactive"""
     while True:
-        os.system('clear')  # Efface l'écran du terminal sous Linux
+        os.system('clear')  
         
-        # ASCII ART "NEXUS" style Red Tiger
         banner = """[bold red]
 ███╗   ██╗███████╗██╗  ██╗██╗   ██╗███████╗
 ████╗  ██║██╔════╝╚██╗██╔╝██║   ██║██╔════╝
@@ -211,7 +227,6 @@ def _interactive_menu(store: Store) -> None:
 """
         console.print(banner, justify="center")
         
-        # Le Menu numéroté
         menu = """
 [bold red][[/bold red][bold white]01[/bold white][bold red]][/bold red] [white]Lancer un Scan TCP[/white]        [bold red][[/bold red][bold white]04[/bold white][bold red]][/bold red] [white]Audit du Système Local[/white]
 [bold red][[/bold red][bold white]02[/bold white][bold red]][/bold red] [white]Générer un Rapport HTML[/white]   [bold red][[/bold red][bold white]05[/bold white][bold red]][/bold red] [white]Dashboard (Dernier scan)[/white]
@@ -232,9 +247,13 @@ def _interactive_menu(store: Store) -> None:
                 if not target: continue
                 ports = console.input(" └── [?] Ports (ex: 22,80,443) : ").strip() or "22,80,443"
                 
+                # NOUVEAU : On demande à l'utilisateur s'il veut forcer le mode autorisé
+                auth_input = console.input(" └── [?] Mode offensif autorisé ? (o/N) : ").strip().lower()
+                mode_choisi = "authorized" if auth_input == "o" else "safe"
+                
                 args = argparse.Namespace(
                     targets=[target], targets_option=None, ports=ports,
-                    offline=False, mode="safe", timeout=0.6, concurrency=128, lab=False
+                    offline=False, mode=mode_choisi, timeout=0.6, concurrency=128, lab=False
                 )
                 console.print()
                 try:
