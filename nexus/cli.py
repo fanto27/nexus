@@ -223,7 +223,7 @@ def _interactive_menu(store: Store) -> None:
 ██║╚██╗██║██╔══╝   ██╔██╗ ██║   ██║╚════██║
 ██║ ╚████║███████╗██╔╝ ██╗╚██████╔╝███████║
 ╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝
-[/bold red][bold white]      C Y B E R   S E C U R I T Y   F R A M E W O R K[/bold white]
+[/bold red][bold white]  C Y B E R   S E C U R I T Y   F R A M E W O R K   B Y  F A N T O  [/bold white]
 """
         console.print(banner, justify="center")
         
